@@ -32,13 +32,6 @@ const resetButton = document.createElement("button");
 const buttons = new Map();
 const moves = [];
 
-/*
- * side 0 / side 1 are the two turns used by the C++ game.
- *
- * Each side is either:
- *   "human"
- *   "computer"
- */
 let sides = ["human", "computer"];
 
 title.textContent = "Divisor Geography";
@@ -199,8 +192,13 @@ function getSideName(side) {
         : "Computer";
 }
 
-function addMove(number) {
-    moves.push(number);
+function addMove(number, side, actor) {
+    moves.push({
+        number,
+        side,
+        actor
+    });
+
     updateMoveList();
 }
 
@@ -215,8 +213,8 @@ function updateMoveList() {
 
         item.textContent =
             secondMove === undefined
-                ? `${firstMove}, …`
-                : `${firstMove}, ${secondMove}`;
+                ? `${firstMove.number}, …`
+                : `${firstMove.number}, ${secondMove.number}`;
 
         movesList.append(item);
     }
@@ -284,7 +282,6 @@ function configureSides() {
 
 function updateBoard() {
     const lastMove = Module._game_last_move(game);
-    const currentSide = getCurrentSide();
     const currentActor = getCurrentActor();
     const legalMoves = new Set(getLegalMoves());
 
@@ -296,13 +293,45 @@ function updateBoard() {
 
         button.disabled =
             !available ||
-            !legalMoves.has(number) ||
-            currentActor !== "human";
+            currentActor !== "human" ||
+            !legalMoves.has(number);
 
         button.style.fontWeight =
             number === lastMove
                 ? "bold"
                 : "";
+    }
+
+    /*
+     * Reset styles first, then style squares that have actually
+     * been played.
+     */
+    for (const button of buttons.values()) {
+        button.style.background = "";
+        button.style.color = "";
+        button.style.border = "";
+    }
+
+    for (const move of moves) {
+        const button = buttons.get(move.number);
+
+        if (move.actor === "human") {
+            button.style.background = "#4caf50";
+            button.style.color = "white";
+            button.style.border = "2px solid #2e7d32";
+        } else {
+            button.style.background = "#e57373";
+            button.style.color = "white";
+            button.style.border = "2px solid #c62828";
+        }
+    }
+
+    /*
+     * Keep the most recent move visually emphasized.
+     */
+    if (lastMove !== -1) {
+        const lastButton = buttons.get(lastMove);
+        lastButton.style.fontWeight = "bold";
     }
 }
 
@@ -311,9 +340,8 @@ function updateDialog() {
     const currentActor = getCurrentActor();
     const currentSideName = getSideName(currentSide);
     const bestMove = getBestMove();
-    const gameOver = bestMove === -1;
 
-    if (gameOver) {
+    if (bestMove === -1) {
         const winnerSide = currentSide === 0 ? 1 : 0;
         const winner = getSideName(winnerSide);
 
@@ -352,6 +380,9 @@ function updateUI() {
 }
 
 function makeMove(number) {
+    const side = getCurrentSide();
+    const actor = getCurrentActor();
+
     const success =
         Module._game_make_move(game, number);
 
@@ -359,7 +390,7 @@ function makeMove(number) {
         return false;
     }
 
-    addMove(number);
+    addMove(number, side, actor);
     updateUI();
 
     return true;
@@ -386,8 +417,8 @@ function runComputerTurns() {
         const computerMove = getBestMove();
 
         /*
-         * best_move() == -1 means that the current position
-         * is losing: there is no legal move.
+         * -1 means that the current position is losing,
+         * so there is no move to make.
          */
         if (computerMove === -1) {
             break;
@@ -396,13 +427,6 @@ function runComputerTurns() {
         if (!makeMove(computerMove)) {
             break;
         }
-
-        /*
-         * In Player vs Computer, this loop stops after the
-         * computer has moved because it becomes the human's turn.
-         *
-         * In Computer vs Computer, it continues until the game ends.
-         */
     }
 
     updateUI();
@@ -413,15 +437,9 @@ function reset() {
     game = Module._game_create();
 
     moves.length = 0;
-    updateMoveList();
 
     configureSides();
     updateUI();
-
-    /*
-     * If the selected first player is controlled by the computer,
-     * let it make the opening move automatically.
-     */
     runComputerTurns();
 }
 
@@ -440,3 +458,4 @@ updateFirstPlayerOptions();
 configureSides();
 updateUI();
 runComputerTurns();
+
