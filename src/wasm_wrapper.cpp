@@ -1,6 +1,6 @@
 #include <vector>
 
-#include "DivisorGeography.hpp"
+#include "divisor_geography.hpp"
 
 extern "C" {
 
