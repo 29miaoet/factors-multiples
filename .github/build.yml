@@ -1,0 +1,59 @@
+name: Build WebAssembly
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  wasm:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Emscripten
+        uses: emscripten-core/setup-emsdk@v15
+        with:
+          version: 6.0.5
+          actions-cache-folder: emsdk-cache
+
+      - name: Show compiler version
+        run: em++ --version
+
+      - name: Build WebAssembly
+        shell: bash
+        run: |
+          em++ \
+            -std=c++17 \
+            -O3 \
+            -DNDEBUG \
+            -Iinclude \
+            src/wasm_wrapper.cpp \
+            --no-entry \
+            -sMODULARIZE=1 \
+            -sEXPORT_ES6=1 \
+            -sENVIRONMENT=web \
+            -sEXPORTED_FUNCTIONS='[
+              "_game_create",
+              "_game_destroy",
+              "_game_make_move",
+              "_game_best_move",
+              "_game_turn",
+              "_game_last_move",
+              "_game_is_available",
+              "_game_set_turn",
+              "_game_set_board_position"
+            ]' \
+            -o web/divisor_geography.mjs
+
+      - name: Upload WebAssembly build
+        uses: actions/upload-artifact@v7
+        with:
+          name: divisor-geography-wasm
+          path: |
+            web/divisor_geography.mjs
+            web/divisor_geography.wasm
