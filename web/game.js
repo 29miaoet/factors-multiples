@@ -34,7 +34,7 @@ const moves = [];
 
 let sides = ["human", "computer"];
 
-title.textContent = "Divisor Geography";
+title.textContent = "Factors & Multiples";
 
 layout.style.display = "grid";
 layout.style.gridTemplateColumns = "minmax(0, 1fr) 320px";
